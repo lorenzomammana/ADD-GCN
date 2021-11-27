@@ -18,7 +18,7 @@ class DynamicGraphConvolution(nn.Module):
         self.bn_global = nn.BatchNorm1d(in_features)
         self.relu = nn.LeakyReLU(0.2)
 
-        self.conv_create_co_mat = nn.Conv1d(in_features*2, num_nodes, 1)
+        self.conv_create_co_mat = nn.Conv1d(in_features * 2, num_nodes, 1)
         self.dynamic_weight = nn.Conv1d(in_features, out_features, 1)
 
     def forward_static_gcn(self, x):
@@ -33,7 +33,7 @@ class DynamicGraphConvolution(nn.Module):
         x_glb = self.bn_global(x_glb)
         x_glb = self.relu(x_glb)
         x_glb = x_glb.expand(x_glb.size(0), x_glb.size(1), x.size(2))
-        
+
         ### Construct the dynamic correlation matrix ###
         x = torch.cat((x_glb, x), dim=1)
         dynamic_adj = self.conv_create_co_mat(x)
@@ -55,7 +55,7 @@ class DynamicGraphConvolution(nn.Module):
         - Output: (B, C_out, N) # C_out: 1024, N: num_classes
         """
         out_static = self.forward_static_gcn(x)
-        x = x + out_static # residual
+        x = x + out_static  # residual
         dynamic_adj = self.forward_construct_dynamic_graph(x)
         x = self.forward_dynamic_gcn(x, dynamic_adj)
         return x
@@ -76,13 +76,13 @@ class ADD_GCN(nn.Module):
         )
         self.num_classes = num_classes
 
-        self.fc = nn.Conv2d(model.fc.in_features, num_classes, (1,1), bias=False)
+        self.fc = nn.Conv2d(model.fc.in_features, num_classes, (1, 1), bias=False)
 
-        self.conv_transform = nn.Conv2d(2048, 1024, (1,1))
+        self.conv_transform = nn.Conv2d(2048, 1024, (1, 1))
         self.relu = nn.LeakyReLU(0.2)
 
         self.gcn = DynamicGraphConvolution(1024, 1024, num_classes)
-        
+
         self.mask_mat = nn.Parameter(torch.eye(self.num_classes).float())
         self.last_linear = nn.Conv1d(1024, self.num_classes, 1)
 
@@ -113,14 +113,15 @@ class ADD_GCN(nn.Module):
         - Input: (B, C_in, H, W) # C_in: 2048
         - Output: (B, C_out, N) # C_out: 1024, N: num_classes
         """
-        mask = self.fc(x) 
-        mask = mask.view(mask.size(0), mask.size(1), -1) 
+        mask = self.fc(x)
+        mask = mask.view(mask.size(0), mask.size(1), -1)
         mask = torch.sigmoid(mask)
         mask = mask.transpose(1, 2)
 
         x = self.conv_transform(x)
         x = x.view(x.size(0), x.size(1), -1)
         x = torch.matmul(x, mask)
+
         return x
 
     def forward_dgcn(self, x):
@@ -132,20 +133,23 @@ class ADD_GCN(nn.Module):
 
         out1 = self.forward_classification_sm(x)
 
-        v = self.forward_sam(x) # B*1024*num_classes
+        v = self.forward_sam(x)  # B*1024*num_classes
         z = self.forward_dgcn(v)
         z = v + z
 
-        out2 = self.last_linear(z) # B*1*num_classes
+        out2 = self.last_linear(z)  # B*1*num_classes
         mask_mat = self.mask_mat.detach()
         out2 = (out2 * mask_mat).sum(-1)
+
+        out1 = torch.sigmoid(out1)
+        out2 = torch.sigmoid(out2)
+        
         return out1, out2
 
     def get_config_optim(self, lr, lrp):
         small_lr_layers = list(map(id, self.features.parameters()))
-        large_lr_layers = filter(lambda p:id(p) not in small_lr_layers, self.parameters())
+        large_lr_layers = filter(lambda p: id(p) not in small_lr_layers, self.parameters())
         return [
-                {'params': self.features.parameters(), 'lr': lr * lrp},
-                {'params': large_lr_layers, 'lr': lr},
-                ]
-
+            {'params': self.features.parameters(), 'lr': lr * lrp},
+            {'params': large_lr_layers, 'lr': lr},
+        ]

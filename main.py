@@ -12,13 +12,13 @@ import random
 parser = argparse.ArgumentParser(description='PyTorch Training for Multi-label Image Classification')
 
 ''' Fixed in general '''
-parser.add_argument('--data_root_dir', default='./datasets/', type=str, help='save path')
+parser.add_argument('--data_root_dir', default='./dataset/', type=str, help='save path')
 parser.add_argument('--image-size', '-i', default=448, type=int)
 parser.add_argument('--epochs', default=50, type=int)
 parser.add_argument('--epoch_step', default=[30, 40], type=int, nargs='+', help='number of epochs to change learning rate')
 # parser.add_argument('--device_ids', default=[0], type=int, nargs='+', help='number of epochs to change learning rate')
 parser.add_argument('-b', '--batch-size', default=16, type=int)
-parser.add_argument('-j', '--num_workers', default=4, type=int, metavar='INT', help='number of data loading workers (default: 4)')
+parser.add_argument('-j', '--num_workers', default=8, type=int, metavar='INT', help='number of data loading workers (default: 4)')
 parser.add_argument('--display_interval', default=200, type=int, metavar='M', help='display_interval')
 parser.add_argument('--lr', '--learning-rate', default=0.05, type=float)
 parser.add_argument('--lrp', '--learning-rate-pretrained', default=0.1, type=float, metavar='LRP', help='learning rate for pre-trained layers')

@@ -1,15 +1,18 @@
-import os
 import json
+import os
 import subprocess
-from PIL import Image
-# import numpy as np
-import torch
-from torch.utils.data import Dataset
-import pickle
 
-urls = {'train_img':'http://images.cocodataset.org/zips/train2014.zip',
-        'val_img' : 'http://images.cocodataset.org/zips/val2014.zip',
-        'annotations':'http://images.cocodataset.org/annotations/annotations_trainval2014.zip'}
+# import numpy as np
+import albumentations
+import torch
+from PIL import Image
+from torch.utils.data import Dataset
+import cv2
+
+urls = {'train_img': 'http://images.cocodataset.org/zips/train2014.zip',
+        'val_img': 'http://images.cocodataset.org/zips/val2014.zip',
+        'annotations': 'http://images.cocodataset.org/annotations/annotations_trainval2014.zip'}
+
 
 def download_coco2014(root, phase):
     work_dir = os.getcwd()
@@ -32,7 +35,7 @@ def download_coco2014(root, phase):
     img_data = os.path.join(root, filename.split('.')[0])
     if not os.path.exists(img_data):
         print('[dataset] Extracting tar file {file} to {path}'.format(file=cached_file, path=root))
-        command = 'unzip {} -d {}'.format(cached_file,root)
+        command = 'unzip {} -d {}'.format(cached_file, root)
         os.system(command)
     print('[dataset] Done!')
 
@@ -91,6 +94,7 @@ def download_coco2014(root, phase):
     print('[json] Done!')
     os.chdir(work_dir)
 
+
 def categoty_to_idx(category):
     cat2idx = {}
     for cat in category:
@@ -99,20 +103,34 @@ def categoty_to_idx(category):
 
 
 class COCO2014(Dataset):
-    def __init__(self, root, transform=None, phase='train'):
+    def __init__(self, root, transform=None, phase='train', filter_labels=None):
         self.root = os.path.abspath(root)
         self.phase = phase
         self.img_list = []
         self.transform = transform
-        download_coco2014(self.root, phase)
-        self.get_anno()
+        # download_coco2014(self.root, phase)
+        self.get_anno(filter_labels)
         self.num_classes = len(self.cat2idx)
-        print('[dataset] COCO2014 classification phase={} number of classes={}  number of images={}'.format(phase, self.num_classes, len(self.img_list)))
+        print('[dataset] COCO2014 classification phase={} number of classes={}  number of images={}'.format(phase,
+                                                                                                            self.num_classes,
+                                                                                                            len(self.img_list)))
 
-    def get_anno(self):
+    def get_anno(self, filter_labels: set):
         list_path = os.path.join(self.root, '{}_anno.json'.format(self.phase))
         self.img_list = json.load(open(list_path, 'r'))
         self.cat2idx = json.load(open(os.path.join(self.root, 'category.json'), 'r'))
+
+        if filter_labels is not None:
+            # Extract only the images with at least two labels belonging to the filter_labels set
+            self.img_list = [
+                {'file_name': x['file_name'],
+                 'labels': list(set(x['labels']).intersection(filter_labels))
+                 }
+                for x in self.img_list
+            ]
+            self.img_list = list(filter(lambda x: len(x['labels']) > 2, self.img_list))
+
+            self.cat2idx = dict(filter(lambda x: x[1] in filter_labels, self.cat2idx.items()))
 
     def __len__(self):
         return len(self.img_list)
@@ -121,13 +139,16 @@ class COCO2014(Dataset):
         item = self.img_list[index]
         filename = item['file_name']
         labels = sorted(item['labels'])
-        img = Image.open(os.path.join(self.root, '{}2014'.format(self.phase), filename)).convert('RGB')
-        if self.transform is not None:
-            img = self.transform(img)
-        # target = np.zeros(self.num_classes, np.float32) - 1
-        target = torch.zeros(self.num_classes,  dtype=torch.float32) - 1
+
+        if not isinstance(self.transform, albumentations.Compose):
+            img = Image.open(os.path.join(self.root, '{}2014'.format(self.phase), filename)).convert('RGB')
+            if self.transform is not None:
+                img = self.transform(img)
+        else:
+            img = cv2.imread(os.path.join(self.root, '{}2014'.format(self.phase), filename))
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            if self.transform is not None:
+                img = self.transform(image=img)['image']
+        target = torch.zeros(self.num_classes, dtype=torch.int64)
         target[labels] = 1
-        data = {'image':img, 'name': filename, 'target': target}
-        return data
-        # return image, target
-        # return (img, filename), target
+        return img, target
