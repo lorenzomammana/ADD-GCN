@@ -36,9 +36,9 @@ def run_training(params):
     #     ToTensorV2()
     # ])
 
-    train_transform = get_transform(image_size=224, is_train=True)
+    train_transform = get_transform(image_size=448, is_train=True)
     val_transform = alb.Compose([
-        alb.Resize(224, 224),
+        alb.Resize(448, 448),
         alb.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ToTensorV2()
     ])
@@ -56,9 +56,12 @@ def run_training(params):
     data_module = CocoDataModule(
         train_dataset,
         val_dataset,
-        batch_size=64,
+        batch_size=16,
         num_workers=8,
     )
+
+    import ssl
+    ssl._create_default_https_context = ssl._create_unverified_context
 
     # Model definition
     architecture = ADD_GCN(
@@ -70,14 +73,15 @@ def run_training(params):
     #     params.optimizer, params=architecture.parameters()
     # )
 
+    # TODO Understand why get config optim is not working directly through hydra instantiate
     optimizer = torch.optim.SGD(
         params=get_config_optim(architecture,
                                 params.optimizer.lr,
                                 0.1),
         lr=params.optimizer.lr,
-        weight_decay=1e-4,
-        nesterov=False,
-        momentum=0.9
+        weight_decay=params.optimizer.weight_decay,
+        nesterov=params.optimizer.nesterov,
+        momentum=params.optimizer.momentum
     )
     # optimizer = hydra.utils.instantiate(
     #     params.optimizer,

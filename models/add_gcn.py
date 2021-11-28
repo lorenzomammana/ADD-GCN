@@ -141,15 +141,4 @@ class ADD_GCN(nn.Module):
         mask_mat = self.mask_mat.detach()
         out2 = (out2 * mask_mat).sum(-1)
 
-        out1 = torch.sigmoid(out1)
-        out2 = torch.sigmoid(out2)
-        
         return out1, out2
-
-    def get_config_optim(self, lr, lrp):
-        small_lr_layers = list(map(id, self.features.parameters()))
-        large_lr_layers = filter(lambda p: id(p) not in small_lr_layers, self.parameters())
-        return [
-            {'params': self.features.parameters(), 'lr': lr * lrp},
-            {'params': large_lr_layers, 'lr': lr},
-        ]

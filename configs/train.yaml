@@ -16,7 +16,7 @@ checkpoint:
   _target_: pytorch_lightning.callbacks.ModelCheckpoint
   monitor: val_loss
   mode: min
-  save_top_k: 1
+  save_top_k: 3
   dirpath: checkpoint
   save_last: true
   filename: ckp_{epoch:d}-{step:d}-{val_loss:.3f}
@@ -31,7 +31,7 @@ early_stopping:
 
 trainer:
   max_epochs: 50
-  gpus: [0, 1]
+  gpus: [0, 1, 2, 3]
   strategy: ddp
   gradient_clip_val: 10.0
   precision: 16
@@ -39,6 +39,6 @@ trainer:
   num_sanity_val_steps: 0
 
 logger:
-  mlflow: False
-  experiment_name: ${exp_name}
+  mlflow: true
+  experiment_name: ${exp_name}_multilabel_gcn
   server_address: http://192.168.3.78:5000
