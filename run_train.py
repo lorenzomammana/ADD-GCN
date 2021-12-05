@@ -29,29 +29,12 @@ def get_config_optim(model, lr, lrp):
 
 @hydra.main(config_path="configs", config_name="train.yaml")
 def run_training(params):
-    # train_transform = alb.Compose([
-    #     alb.RandomResizedCrop(224, 224, scale=(0.1, 1.5), ratio=(1.0, 1.0)),
-    #     alb.HorizontalFlip(),
-    #     alb.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    #     ToTensorV2()
-    # ])
-
-    train_transform = get_transform(image_size=448, is_train=True)
-    val_transform = alb.Compose([
-        alb.Resize(448, 448),
-        alb.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ToTensorV2()
-    ])
     # Dataset definition
-    train_dataset = COCO2014('../../../dataset/COCO2014/',
-                             train_transform,
-                             phase='train',
-                             filter_labels=params.dataset.filter_labels)
+    train_dataset = hydra.utils.instantiate(params.train_dset,
+                                            transform=hydra.utils.instantiate(params.aug_train))
 
-    val_dataset = COCO2014('../../../dataset/COCO2014/',
-                           val_transform,
-                           phase='val',
-                           filter_labels=params.dataset.filter_labels)
+    val_dataset = hydra.utils.instantiate(params.test_dset,
+                                          transform=hydra.utils.instantiate(params.aug_test))
 
     data_module = CocoDataModule(
         train_dataset,
@@ -59,9 +42,6 @@ def run_training(params):
         batch_size=16,
         num_workers=8,
     )
-
-    import ssl
-    ssl._create_default_https_context = ssl._create_unverified_context
 
     # Model definition
     architecture = ADD_GCN(
