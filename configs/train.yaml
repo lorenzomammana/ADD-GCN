@@ -1,7 +1,8 @@
 defaults:
   - optimizer: sgd
   - scheduler: step_lr
-  - aug:
+  - aug@aug_train: train_coco
+  - aug@aug_test: test_coco
 
 exp_name: coco_training
 
@@ -11,6 +12,18 @@ hydra:
 
 dataset:
   filter_labels: # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+train_dset:
+  _target_: data.coco.COCO2014
+  root: ../../../dataset/COCO2014/
+  phase: train
+  filter_labels: ${dataset.filter_labels}
+
+test_dset:
+  _target_: data.coco.COCO2014
+  root: ../../../dataset/COCO2014/
+  phase: val
+  filter_labels: ${dataset.filter_labels}
 
 checkpoint:
   _target_: pytorch_lightning.callbacks.ModelCheckpoint
