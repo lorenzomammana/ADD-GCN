@@ -8,10 +8,14 @@ exp_name: coco_training
 
 hydra:
   run:
-    dir: ./run/${now:%Y-%m-%d}/${now:%H-%M-%S}_${exp_name}
+    dir: ./run/${exp_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
 dataset:
   filter_labels: # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  use_patches: false
+
+model:
+  skip_gcn: false
 
 train_dset:
   _target_: data.coco.COCO2014
