@@ -1,5 +1,6 @@
 import os
 
+import cv2
 import hydra
 import torch.optim
 import torchvision
@@ -8,14 +9,11 @@ from pytorch_lightning.callbacks import (
     LearningRateMonitor,
 )
 from pytorch_lightning.loggers import MLFlowLogger
-from data.coco import COCO2014
-import albumentations as alb
-from albumentations.pytorch import ToTensorV2
-
+import numpy as np
 from models import ADD_GCN
 from models.add_gcn_lightning import AddGcnModel
 from data.coco_datamodule import CocoDataModule
-from data import get_transform
+import glob
 
 
 def get_config_optim(model, lr, lrp):
@@ -27,14 +25,41 @@ def get_config_optim(model, lr, lrp):
     ]
 
 
-@hydra.main(config_path="configs", config_name="train.yaml")
+@hydra.main(config_path="configs", config_name="train_uva_2.yaml")
 def run_training(params):
-    # Dataset definition
-    train_dataset = hydra.utils.instantiate(params.train_dset,
-                                            transform=hydra.utils.instantiate(params.aug_train))
+    cv2.setNumThreads(1)
 
-    val_dataset = hydra.utils.instantiate(params.test_dset,
-                                          transform=hydra.utils.instantiate(params.aug_test))
+    if params.dataset.use_patches:
+        img_names = glob.glob(os.path.join(params.train_dset.data_dir, 'patches', '*'))
+        img_names = [x.split("/")[-1] for x in img_names]
+        img_names_unique = np.array(sorted(list(set(["_".join(x.split('_')[0:-1]) for x in img_names]))))
+        rng = np.random.default_rng(42)
+
+        indices = np.array(range(len(img_names_unique)), dtype=int)
+        indices = rng.permutation(indices)
+
+        img_names_unique = img_names_unique[indices].tolist()
+        split_index = int(np.floor(len(img_names_unique) * params.dataset.test_size))
+        img_names_train = img_names_unique[0:-split_index]
+        img_names_val = img_names_unique[-split_index:]
+        img_names_train = list(filter(lambda x: any(y in x for y in img_names_train), img_names))
+        img_names_val = list(filter(lambda x: any(y in x for y in img_names_val), img_names))
+
+        # Dataset definition
+        train_dataset = hydra.utils.instantiate(params.train_dset,
+                                                transform=hydra.utils.instantiate(params.aug_train),
+                                                valid_files=img_names_train)
+
+        val_dataset = hydra.utils.instantiate(params.test_dset,
+                                              transform=hydra.utils.instantiate(params.aug_test),
+                                              valid_files=img_names_val)
+    else:
+        # Dataset definition
+        train_dataset = hydra.utils.instantiate(params.train_dset,
+                                                transform=hydra.utils.instantiate(params.aug_train))
+
+        val_dataset = hydra.utils.instantiate(params.test_dset,
+                                              transform=hydra.utils.instantiate(params.aug_test))
 
     data_module = CocoDataModule(
         train_dataset,
@@ -46,7 +71,8 @@ def run_training(params):
     # Model definition
     architecture = ADD_GCN(
         torchvision.models.resnet101(pretrained=True),
-        train_dataset.num_classes
+        train_dataset.num_classes,
+        skip_gcn=params.model.skip_gcn
     )
 
     # optimizer = hydra.utils.instantiate(
