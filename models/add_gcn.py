@@ -62,7 +62,7 @@ class DynamicGraphConvolution(nn.Module):
 
 
 class ADD_GCN(nn.Module):
-    def __init__(self, model, num_classes):
+    def __init__(self, model, num_classes, skip_gcn: bool = False):
         super(ADD_GCN, self).__init__()
         self.features = nn.Sequential(
             model.conv1,
@@ -74,21 +74,30 @@ class ADD_GCN(nn.Module):
             model.layer3,
             model.layer4,
         )
+
         self.num_classes = num_classes
+        self.skip_gcn = skip_gcn
 
-        self.fc = nn.Conv2d(model.fc.in_features, num_classes, (1, 1), bias=False)
+        if not self.skip_gcn:
+            self.fc = nn.Conv2d(model.fc.in_features, num_classes, (1, 1), bias=False)
 
-        self.conv_transform = nn.Conv2d(2048, 1024, (1, 1))
-        self.relu = nn.LeakyReLU(0.2)
+            self.conv_transform = nn.Conv2d(2048, 1024, (1, 1))
+            self.relu = nn.LeakyReLU(0.2)
 
-        self.gcn = DynamicGraphConvolution(1024, 1024, num_classes)
+            self.gcn = DynamicGraphConvolution(1024, 1024, num_classes)
 
-        self.mask_mat = nn.Parameter(torch.eye(self.num_classes).float())
-        self.last_linear = nn.Conv1d(1024, self.num_classes, 1)
+            self.mask_mat = nn.Parameter(torch.eye(self.num_classes).float())
+            self.last_linear = nn.Conv1d(1024, self.num_classes, 1)
+        else:
+            self.avgpool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
 
-        # image normalization
-        self.image_normalization_mean = [0.485, 0.456, 0.406]
-        self.image_normalization_std = [0.229, 0.224, 0.225]
+            self.fc = nn.Sequential(
+                nn.Linear(model.fc.in_features, 1024),
+                nn.Dropout(p=0.3),
+                nn.Linear(1024, 256),
+                nn.Dropout(p=0.3),
+                nn.Linear(256, self.num_classes)
+            )
 
     def forward_feature(self, x):
         x = self.features(x)
@@ -131,14 +140,19 @@ class ADD_GCN(nn.Module):
     def forward(self, x):
         x = self.forward_feature(x)
 
-        out1 = self.forward_classification_sm(x)
+        if not self.skip_gcn:
+            out1 = self.forward_classification_sm(x)
 
-        v = self.forward_sam(x)  # B*1024*num_classes
-        z = self.forward_dgcn(v)
-        z = v + z
+            v = self.forward_sam(x)  # B*1024*num_classes
+            z = self.forward_dgcn(v)
+            z = v + z
 
-        out2 = self.last_linear(z)  # B*1*num_classes
-        mask_mat = self.mask_mat.detach()
-        out2 = (out2 * mask_mat).sum(-1)
+            out2 = self.last_linear(z)  # B*1*num_classes
+            mask_mat = self.mask_mat.detach()
+            out2 = (out2 * mask_mat).sum(-1)
 
-        return out1, out2
+            return out1, out2
+        else:
+            x = self.avgpool(x)
+            out1 = self.fc(x.view(x.shape[0], -1))
+            return out1, out1
