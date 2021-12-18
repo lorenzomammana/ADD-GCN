@@ -5,11 +5,11 @@ from torch.utils.data import DataLoader, Dataset
 
 class CocoDataModule(pl.LightningDataModule):
     def __init__(
-            self,
-            train_dataset: Dataset,
-            val_dataset: Dataset,
-            batch_size: Optional[int] = 256,
-            num_workers: int = 8,
+        self,
+        train_dataset: Dataset,
+        val_dataset: Dataset,
+        batch_size: Optional[int] = 256,
+        num_workers: int = 8,
     ):
         super().__init__()
 
@@ -28,7 +28,7 @@ class CocoDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=True,
             shuffle=True,
-            drop_last=True
+            drop_last=True,
         )
 
         return dataloader

@@ -6,12 +6,8 @@ class DynamicGraphConvolution(nn.Module):
     def __init__(self, in_features, out_features, num_nodes):
         super(DynamicGraphConvolution, self).__init__()
 
-        self.static_adj = nn.Sequential(
-            nn.Conv1d(num_nodes, num_nodes, 1, bias=False),
-            nn.LeakyReLU(0.2))
-        self.static_weight = nn.Sequential(
-            nn.Conv1d(in_features, out_features, 1),
-            nn.LeakyReLU(0.2))
+        self.static_adj = nn.Sequential(nn.Conv1d(num_nodes, num_nodes, 1, bias=False), nn.LeakyReLU(0.2))
+        self.static_weight = nn.Sequential(nn.Conv1d(in_features, out_features, 1), nn.LeakyReLU(0.2))
 
         self.gap = nn.AdaptiveAvgPool1d(1)
         self.conv_global = nn.Conv1d(in_features, in_features, 1)
@@ -48,9 +44,9 @@ class DynamicGraphConvolution(nn.Module):
         return x
 
     def forward(self, x):
-        """ D-GCN module
+        """D-GCN module
 
-        Shape: 
+        Shape:
         - Input: (B, C_in, N) # C_in: 1024, N: num_classes
         - Output: (B, C_out, N) # C_out: 1024, N: num_classes
         """
@@ -96,7 +92,7 @@ class ADD_GCN(nn.Module):
                 nn.Dropout(p=0.3),
                 nn.Linear(model.fc.in_features // 2, model.fc.in_features // 8),
                 nn.Dropout(p=0.3),
-                nn.Linear(model.fc.in_features // 8, self.num_classes)
+                nn.Linear(model.fc.in_features // 8, self.num_classes),
             )
 
     def forward_feature(self, x):
@@ -104,7 +100,7 @@ class ADD_GCN(nn.Module):
         return x
 
     def forward_classification_sm(self, x):
-        """ Get another confident scores {s_m}.
+        """Get another confident scores {s_m}.
 
         Shape:
         - Input: (B, C_in, H, W) # C_in: 2048
@@ -116,9 +112,9 @@ class ADD_GCN(nn.Module):
         return x
 
     def forward_sam(self, x):
-        """ SAM module
+        """SAM module
 
-        Shape: 
+        Shape:
         - Input: (B, C_in, H, W) # C_in: 2048
         - Output: (B, C_out, N) # C_out: 1024, N: num_classes
         """

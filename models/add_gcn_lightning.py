@@ -9,18 +9,18 @@ from torchmetrics import F1, AveragePrecision
 
 class AddGcnModel(pl.LightningModule):
     def __init__(
-            self,
-            architecture: nn.Module,
-            optimizer: Optional[optim.Optimizer] = None,
-            lr_scheduler: Optional[object] = None
+        self,
+        architecture: nn.Module,
+        optimizer: Optional[optim.Optimizer] = None,
+        lr_scheduler: Optional[object] = None,
     ):
         super(AddGcnModel, self).__init__()
         self.model = architecture
         self.loss_function = torch.nn.BCEWithLogitsLoss()
         self.optimizer = optimizer
         self.schedulers = lr_scheduler
-        self.f1_score = F1(self.model.num_classes, threshold=0.5, average='macro')
-        self.mAP = AveragePrecision(self.model.num_classes, average='macro')
+        self.f1_score = F1(self.model.num_classes, threshold=0.5, average="macro")
+        self.mAP = AveragePrecision(self.model.num_classes, average="macro")
 
         # Necessary for logging hyperparams with tensorboard
         # TODO Understand why this is super slow
@@ -65,17 +65,13 @@ class AddGcnModel(pl.LightningModule):
         return s_output, y
 
     def training_step_end(self, outputs):
-        loss = self.loss_function(outputs['predictions'], outputs['y'].float())
+        loss = self.loss_function(outputs["predictions"], outputs["y"].float())
 
-        t_output = torch.sigmoid(outputs['predictions'])
-        f1_score = self.f1_score(t_output, outputs['y'])
-        map_score = self.mAP(t_output, outputs['y'])
+        t_output = torch.sigmoid(outputs["predictions"])
+        f1_score = self.f1_score(t_output, outputs["y"])
+        map_score = self.mAP(t_output, outputs["y"])
 
-        out_dict = {
-            "loss": loss,
-            "train_f1": f1_score,
-            "train_map": map_score
-        }
+        out_dict = {"loss": loss, "train_f1": f1_score, "train_map": map_score}
 
         return out_dict
 
@@ -97,17 +93,13 @@ class AddGcnModel(pl.LightningModule):
         return out_dict
 
     def validation_step_end(self, outputs):
-        loss = self.loss_function(outputs['predictions'], outputs['y'].float())
+        loss = self.loss_function(outputs["predictions"], outputs["y"].float())
 
-        t_output = torch.sigmoid(outputs['predictions'])
-        f1_score = self.f1_score(t_output, outputs['y'])
-        map_score = self.mAP(t_output, outputs['y'])
+        t_output = torch.sigmoid(outputs["predictions"])
+        f1_score = self.f1_score(t_output, outputs["y"])
+        map_score = self.mAP(t_output, outputs["y"])
 
-        out_dict = {
-            "val_loss": loss,
-            "val_f1": f1_score,
-            "val_map": map_score
-        }
+        out_dict = {"val_loss": loss, "val_f1": f1_score, "val_map": map_score}
 
         return out_dict
 

@@ -2,7 +2,7 @@ import torchvision
 
 from .add_gcn import ADD_GCN
 
-model_dict = {'ADD_GCN': ADD_GCN}
+model_dict = {"ADD_GCN": ADD_GCN}
 
 
 def get_model(num_classes, args):
