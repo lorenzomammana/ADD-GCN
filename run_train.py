@@ -20,8 +20,8 @@ def get_config_optim(model, lr, lrp):
     params = list(model.named_parameters())
 
     return [
-        {'params': [p for n, p in params if 'features' in n], 'lr': lr * lrp},
-        {'params': [p for n, p in params if 'features' not in n], 'lr': lr},
+        {"params": [p for n, p in params if "features" in n], "lr": lr * lrp},
+        {"params": [p for n, p in params if "features" not in n], "lr": lr},
     ]
 
 
@@ -30,9 +30,9 @@ def run_training(params):
     cv2.setNumThreads(1)
 
     if params.dataset.use_patches:
-        img_names = glob.glob(os.path.join(params.train_dset.data_dir, 'patches', '*'))
+        img_names = glob.glob(os.path.join(params.train_dset.data_dir, "patches", "*"))
         img_names = [x.split("/")[-1] for x in img_names]
-        img_names_unique = np.array(sorted(list(set(["_".join(x.split('_')[0:-1]) for x in img_names]))))
+        img_names_unique = np.array(sorted(list(set(["_".join(x.split("_")[0:-1]) for x in img_names]))))
         rng = np.random.default_rng(42)
 
         indices = np.array(range(len(img_names_unique)), dtype=int)
@@ -46,20 +46,18 @@ def run_training(params):
         img_names_val = list(filter(lambda x: any(y in x for y in img_names_val), img_names))
 
         # Dataset definition
-        train_dataset = hydra.utils.instantiate(params.train_dset,
-                                                transform=hydra.utils.instantiate(params.aug_train),
-                                                valid_files=img_names_train)
+        train_dataset = hydra.utils.instantiate(
+            params.train_dset, transform=hydra.utils.instantiate(params.aug_train), valid_files=img_names_train
+        )
 
-        val_dataset = hydra.utils.instantiate(params.test_dset,
-                                              transform=hydra.utils.instantiate(params.aug_test),
-                                              valid_files=img_names_val)
+        val_dataset = hydra.utils.instantiate(
+            params.test_dset, transform=hydra.utils.instantiate(params.aug_test), valid_files=img_names_val
+        )
     else:
         # Dataset definition
-        train_dataset = hydra.utils.instantiate(params.train_dset,
-                                                transform=hydra.utils.instantiate(params.aug_train))
+        train_dataset = hydra.utils.instantiate(params.train_dset, transform=hydra.utils.instantiate(params.aug_train))
 
-        val_dataset = hydra.utils.instantiate(params.test_dset,
-                                              transform=hydra.utils.instantiate(params.aug_test))
+        val_dataset = hydra.utils.instantiate(params.test_dset, transform=hydra.utils.instantiate(params.aug_test))
 
     data_module = CocoDataModule(
         train_dataset,
@@ -70,31 +68,25 @@ def run_training(params):
 
     # Model definition
     architecture = ADD_GCN(
-        torchvision.models.resnet101(pretrained=True),
+        torchvision.models.resnet18(pretrained=params.model.pretrained),
         train_dataset.num_classes,
-        skip_gcn=params.model.skip_gcn
+        skip_gcn=params.model.skip_gcn,
     )
 
-    # optimizer = hydra.utils.instantiate(
-    #     params.optimizer, params=architecture.parameters()
-    # )
+    if params.model.pretrained:
+        optimizer_params = get_config_optim(architecture, params.optimizer.lr, 0.1)
+    else:
+        optimizer_params = architecture.parameters()
 
-    # TODO Understand why get config optim is not working directly through hydra instantiate
+    # TODO Understand why get config optim is not working directly through hydra instantiate when using get_config_optim
+    #  Apparently list of dicts are automatically converted to Hydra dicts
     optimizer = torch.optim.SGD(
-        params=get_config_optim(architecture,
-                                params.optimizer.lr,
-                                0.1),
+        params=optimizer_params,
         lr=params.optimizer.lr,
         weight_decay=params.optimizer.weight_decay,
         nesterov=params.optimizer.nesterov,
-        momentum=params.optimizer.momentum
+        momentum=params.optimizer.momentum,
     )
-    # optimizer = hydra.utils.instantiate(
-    #     params.optimizer,
-    #     params=get_config_optim(architecture,
-    #                             params.optimizer.lr,
-    #                             0.1)
-    # )
 
     scheduler = hydra.utils.instantiate(params.scheduler, optimizer=optimizer)
 
@@ -116,11 +108,7 @@ def run_training(params):
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
     checkpoint = hydra.utils.instantiate(params.checkpoint)
     early_stopping = hydra.utils.instantiate(params.early_stopping)
-    trainer = Trainer(
-        **params.trainer,
-        callbacks=[checkpoint, lr_monitor, early_stopping],
-        logger=logger
-    )
+    trainer = Trainer(**params.trainer, callbacks=[checkpoint, lr_monitor, early_stopping], logger=logger)
     trainer.fit(model, datamodule=data_module)
 
 
