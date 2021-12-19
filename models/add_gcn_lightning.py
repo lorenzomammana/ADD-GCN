@@ -49,7 +49,7 @@ class AddGcnModel(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        s_m, s_r = self.forward(x)
+        s_m, s_r, _ = self.forward(x)
 
         s_output = (s_m + s_r) / 2.0
 
@@ -59,7 +59,7 @@ class AddGcnModel(pl.LightningModule):
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         x, y = batch
-        s_m, s_r = self.forward(x)
+        s_m, s_r, _ = self.forward(x)
 
         s_output = (s_m + s_r) / 2.0
         return s_output, y
@@ -85,7 +85,7 @@ class AddGcnModel(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        s_m, s_r = self.forward(x)
+        s_m, s_r, _ = self.forward(x)
 
         s_output = (s_m + s_r) / 2.0
         out_dict = {"predictions": s_output, "y": y}

@@ -3,7 +3,6 @@ import os
 import cv2
 import hydra
 import torch.optim
-import torchvision
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import (
     LearningRateMonitor,
@@ -14,6 +13,8 @@ from models import ADD_GCN
 from models.add_gcn_lightning import AddGcnModel
 from data.coco_datamodule import CocoDataModule
 import glob
+
+from models.mobilevit import MobileViT
 
 
 def get_config_optim(model, lr, lrp):
@@ -28,6 +29,12 @@ def get_config_optim(model, lr, lrp):
 @hydra.main(config_path="configs", config_name="train_uva_2.yaml")
 def run_training(params):
     cv2.setNumThreads(1)
+
+    if not params.model.pretrained:
+        params.aug_train.transforms[-2].mean = [0, 0, 0]
+        params.aug_test.transforms[-2].mean = [0, 0, 0]
+        params.aug_train.transforms[-2].std = [1, 1, 1]
+        params.aug_test.transforms[-2].std = [1, 1, 1]
 
     if params.dataset.use_patches:
         img_names = glob.glob(os.path.join(params.train_dset.data_dir, "patches", "*"))
@@ -68,7 +75,7 @@ def run_training(params):
 
     # Model definition
     architecture = ADD_GCN(
-        torchvision.models.resnet18(pretrained=params.model.pretrained),
+        hydra.utils.instantiate(params.architecture),
         train_dataset.num_classes,
         skip_gcn=params.model.skip_gcn,
     )

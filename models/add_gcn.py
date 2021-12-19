@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from models.mobilevit import MobileViT
 
 
 class DynamicGraphConvolution(nn.Module):
@@ -60,16 +61,20 @@ class DynamicGraphConvolution(nn.Module):
 class ADD_GCN(nn.Module):
     def __init__(self, model, num_classes, skip_gcn: bool = False):
         super(ADD_GCN, self).__init__()
-        self.features = nn.Sequential(
-            model.conv1,
-            model.bn1,
-            model.relu,
-            model.maxpool,
-            model.layer1,
-            model.layer2,
-            model.layer3,
-            model.layer4,
-        )
+
+        if isinstance(model, MobileViT):
+            self.features = model
+        else:
+            self.features = nn.Sequential(
+                model.conv1,
+                model.bn1,
+                model.relu,
+                model.maxpool,
+                model.layer1,
+                model.layer2,
+                model.layer3,
+                model.layer4,
+            )
 
         self.num_classes = num_classes
         self.skip_gcn = skip_gcn
@@ -151,4 +156,4 @@ class ADD_GCN(nn.Module):
         else:
             x = self.avgpool(x)
             out1 = self.fc(x.view(x.shape[0], -1))
-            return out1, out1
+            return out1, out1, None
