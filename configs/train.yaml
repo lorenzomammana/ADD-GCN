@@ -1,0 +1,63 @@
+defaults:
+  - optimizer: sgd
+  - scheduler: step_lr
+  - aug@aug_train: train_coco
+  - aug@aug_test: test_coco
+  - architecture: resnet101
+
+exp_name: coco_training
+
+hydra:
+  run:
+    dir: ./run/${exp_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+dataset:
+  filter_labels: # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  use_patches: false
+
+model:
+  skip_gcn: false
+  pretrained: true
+
+train_dset:
+  _target_: data.coco.COCO2014
+  root: ../../../dataset/COCO2014/
+  phase: train
+  filter_labels: ${dataset.filter_labels}
+
+test_dset:
+  _target_: data.coco.COCO2014
+  root: ../../../dataset/COCO2014/
+  phase: val
+  filter_labels: ${dataset.filter_labels}
+
+checkpoint:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  monitor: val_loss
+  mode: min
+  save_top_k: 3
+  dirpath: checkpoint
+  save_last: true
+  filename: ckp_{epoch:d}-{step:d}-{val_loss:.3f}
+
+early_stopping:
+  _target_: pytorch_lightning.callbacks.EarlyStopping
+  monitor: ${checkpoint.monitor}
+  min_delta: 0.002
+  patience: 30
+  divergence_threshold: 5.0
+  mode: ${checkpoint.mode}
+
+trainer:
+  max_epochs: 50
+  gpus: [0, 1, 2, 3]
+  strategy: ddp
+  gradient_clip_val: 10.0
+  precision: 16
+  accelerator: null
+  num_sanity_val_steps: 0
+
+logger:
+  mlflow: false
+  experiment_name: ${exp_name}_multilabel_gcn
+  server_address:

@@ -9,23 +9,22 @@ import torchvision.transforms as transforms
 from .coco import COCO2014
 from .voc import VOC2007, VOC2012
 
-data_dict = {'COCO2014': COCO2014,
-            'VOC2007': VOC2007,
-            'VOC2012': VOC2012}
+data_dict = {"COCO2014": COCO2014, "VOC2007": VOC2007, "VOC2012": VOC2012}
+
 
 def collate_fn(batch):
     ret_batch = dict()
     for k in batch[0].keys():
-        if k == 'image' or k == 'target':
+        if k == "image" or k == "target":
             ret_batch[k] = torch.cat([b[k].unsqueeze(0) for b in batch])
         else:
             ret_batch[k] = [b[k] for b in batch]
     return ret_batch
 
-class MultiScaleCrop(object):
 
+class MultiScaleCrop(object):
     def __init__(self, input_size, scales=None, max_distort=1, fix_crop=True, more_fix_crop=True):
-        self.scales = scales if scales is not None else [1, 875, .75, .66]
+        self.scales = scales if scales is not None else [1, 875, 0.75, 0.66]
         self.max_distort = max_distort
         self.fix_crop = fix_crop
         self.more_fix_crop = more_fix_crop
@@ -96,57 +95,73 @@ class MultiScaleCrop(object):
         return self.__class__.__name__
 
 
-def get_transform(args, is_train=True):
+def get_transform(image_size=224, is_train=True):
     if is_train:
-        transform = transforms.Compose([
-            # transforms.RandomResizedCrop(args.image_size, scale=(0.1, 1.5), ratio=(1.0, 1.0)),
-            # transforms.RandomResizedCrop(args.image_size, scale=(0.1, 2.0), ratio=(1.0, 1.0)),
-            transforms.Resize((args.image_size+64, args.image_size+64)),
-            MultiScaleCrop(args.image_size, scales=(1.0, 0.875, 0.75, 0.66, 0.5), max_distort=2),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-            ])
+        transform = transforms.Compose(
+            [
+                # transforms.RandomResizedCrop(args.image_size, scale=(0.1, 1.5), ratio=(1.0, 1.0)),
+                # transforms.RandomResizedCrop(args.image_size, scale=(0.1, 2.0), ratio=(1.0, 1.0)),
+                transforms.Resize((image_size + 64, image_size + 64)),
+                MultiScaleCrop(image_size, scales=(1.0, 0.875, 0.75, 0.66, 0.5), max_distort=2),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
     else:
-        transform = transforms.Compose([
-            transforms.Resize((args.image_size,args.image_size)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ])
+        transform = transforms.Compose(
+            [
+                transforms.Resize((args.image_size, args.image_size)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
     return transform
+
 
 def make_data_loader(args, is_train=True):
     root_dir = os.path.join(args.data_root_dir, args.data)
 
     # Build val_loader
     transform = get_transform(args, is_train=False)
-    if args.data == 'COCO2014':
-        val_dataset = COCO2014(root_dir, phase='val', transform=transform)
-    elif args.data in ('VOC2007', 'VOC2012'):
-        val_dataset = data_dict[args.data](root_dir, phase='test', transform=transform)
+    if args.data == "COCO2014":
+        val_dataset = COCO2014(root_dir, phase="val", transform=transform)
+    elif args.data in ("VOC2007", "VOC2012"):
+        val_dataset = data_dict[args.data](root_dir, phase="test", transform=transform)
     else:
-        raise NotImplementedError('Value error: No matched dataset!')
-    
-    num_classes = val_dataset[0]['target'].size(-1)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, 
-                            num_workers=args.num_workers, pin_memory=True, 
-                            collate_fn=collate_fn, drop_last=False)
-    
+        raise NotImplementedError("Value error: No matched dataset!")
+
+    num_classes = val_dataset.num_classes
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        collate_fn=collate_fn,
+        drop_last=False,
+    )
+
     if not is_train:
         return None, val_loader, num_classes
-    
+
     # Build train_loader
     transform = get_transform(args, is_train=True)
-    if args.data == 'COCO2014':
-        train_dataset = COCO2014(root_dir, phase='train', transform=transform)
-    elif args.data in ('VOC2007', 'VOC2012'):
-        train_dataset = data_dict[args.data](root_dir, phase='trainval', transform=transform)
+    if args.data == "COCO2014":
+        train_dataset = COCO2014(root_dir, phase="train", transform=transform)
+    elif args.data in ("VOC2007", "VOC2012"):
+        train_dataset = data_dict[args.data](root_dir, phase="trainval", transform=transform)
     else:
-        raise NotImplementedError('Value error: No matched dataset!')
-    
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, 
-                            num_workers=args.num_workers, pin_memory=True, 
-                            collate_fn=collate_fn, drop_last=True)
-    
+        raise NotImplementedError("Value error: No matched dataset!")
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        collate_fn=collate_fn,
+        drop_last=True,
+    )
 
     return train_loader, val_loader, num_classes

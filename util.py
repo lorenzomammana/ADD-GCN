@@ -5,9 +5,11 @@ from PIL import Image
 import numpy as np
 import random
 
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
-    def __init__(self, name, fmt=':f'):
+
+    def __init__(self, name, fmt=":f"):
         self.name = name
         self.fmt = fmt
         self.reset()
@@ -23,16 +25,17 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
-    
+
     def average(self):
         return self.avg
-    
+
     def value(self):
         return self.val
 
     def __str__(self):
-        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
+        fmtstr = "{name} {val" + self.fmt + "} ({avg" + self.fmt + "})"
         return fmtstr.format(**self.__dict__)
+
 
 class AveragePrecisionMeter(object):
     """
@@ -81,18 +84,21 @@ class AveragePrecisionMeter(object):
         if output.dim() == 1:
             output = output.view(-1, 1)
         else:
-            assert output.dim() == 2, \
-                'wrong output size (should be 1D or 2D with one column \
-                per class)'
+            assert (
+                output.dim() == 2
+            ), "wrong output size (should be 1D or 2D with one column \
+                per class)"
         if target.dim() == 1:
             target = target.view(-1, 1)
         else:
-            assert target.dim() == 2, \
-                'wrong target size (should be 1D or 2D with one column \
-                per class)'
+            assert (
+                target.dim() == 2
+            ), "wrong target size (should be 1D or 2D with one column \
+                per class)"
         if self.scores.numel() > 0:
-            assert target.size(1) == self.targets.size(1), \
-                'dimensions for output should match previously added examples.'
+            assert target.size(1) == self.targets.size(
+                1
+            ), "dimensions for output should match previously added examples."
 
         # make sure storage is of sufficient size
         if self.scores.storage().size() < self.scores.numel() + output.numel():
@@ -107,7 +113,7 @@ class AveragePrecisionMeter(object):
         self.scores.narrow(0, offset, output.size(0)).copy_(output)
         self.targets.narrow(0, offset, target.size(0)).copy_(target)
 
-        self.filenames += filename # record filenames
+        self.filenames += filename  # record filenames
 
     def value(self):
         """Returns the model's average precision for each class
@@ -135,9 +141,9 @@ class AveragePrecisionMeter(object):
         sorted, indices = torch.sort(output, dim=0, descending=True)
 
         # Computes prec@i
-        pos_count = 0.
-        total_count = 0.
-        precision_at_i = 0.
+        pos_count = 0.0
+        total_count = 0.0
+        precision_at_i = 0.0
         for i in indices:
             label = target[i]
             if difficult_examples and label == 0:

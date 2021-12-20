@@ -1,6 +1,9 @@
 # ADD-GCN: Attention-Driven Dynamic Graph Convolutional Network for Multi-Label Image Recognition
 
-This project hosts the code for implementing the ADD-GCN algorithm for multi-label image recognition, as presented in our paper:
+Reimplementation of the ADD-GCN code available [here](https://github.com/Yejin0111/ADD-GCN) with updated Pytorch 
+version, support for hydra configuration and Pytorch lightning.
+Now the code supports changing backbones, and returns the dynamic adjacency matrix for a given input image.
+Also a flag has been included to replace ADD-GCN with a standard MLP for comparison.
 
     Attention-Driven Dynamic Graph Convolutional Network for Multi-Label Image Recognition;
     Jin Ye, Junjun He, Xiaojiang Peng, Wenhao Wu, Yu Qiao;
@@ -10,14 +13,18 @@ This project hosts the code for implementing the ADD-GCN algorithm for multi-lab
 The full paper is available at: [https://arxiv.org/abs/2012.02994](https://arxiv.org/abs/2012.02994). 
 
 ## Installation
-#### This project is implemented with Pytorch and has been tested on version Pytorch 1.0/1.1/1.2.
+#### This project is implemented with Pytorch Lightning and has been tested on version Pytorch 1.10 - Lightning 1.5.5.
 
 ## A quick demo
-After you have installed Pytorch, you can follow the below steps to run a quick demo.
+After you have installed the requirements, you can follow the below steps to run a quick demo.
 
-### Inference for COCO2014
+### Train for COCO2014
+    python run_train.py
+    
+Hydra configuration is provided into configs/train.yaml
 
-    python main.py --data COCO2014 --data_root_dir {YOUR-ROOT-DATA-DIR} --model_name ADD_GCN --resume {THE-TEST-MODEL} -e -i 448
+### Evaluation for COCO2014
+
 
 Please note that:
 1) You should put the COCO2014 folder in {YOUR-ROOT-DATA-DIR}.
@@ -39,7 +46,7 @@ ADD-GCN | 576×576 | 85.2
 
 
 ## Citations
-Please consider citing our paper in your publications if the project helps your research. BibTeX reference is as follows.
+Please consider citing authors paper in your publications if the project helps your research. BibTeX reference is as follows.
 ```
 @inproceedings{ye2020add,
   title   =  {Attention-Driven Dynamic Graph Convolutional Network for Multi-Label Image Recognition},
